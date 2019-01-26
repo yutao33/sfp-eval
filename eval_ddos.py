@@ -4,13 +4,13 @@ import pyasn
 from matplotlib import pyplot as plt
 from pytricia import PyTricia
 from networkx import DiGraph, Graph
+import networkx as nx
 
-import seaborn as sns
+# import seaborn as sns
 import pandas as pd
 import multiprocessing
 
 
-from as_rel import load_as_rel
 from sfp_eval.correctness.advertise import fp_bgp_advertise
 
 #####################################################################
@@ -20,6 +20,7 @@ asndb = pyasn.pyasn(DEFAULT_ASNDB)
 
 
 def load_as_graph():
+    from as_rel import load_as_rel
     return load_as_rel("data/20181201.as-rel.txt")
 
 
@@ -28,6 +29,15 @@ def load_stub_str_list():
         t = str(f.read())
         stubs = t.split()
     return stubs
+
+
+def us_topo():
+    dg = load_as_graph()
+    from as_rel import load_as_country
+    load_as_country('as-country.txt', dg)
+    from as_rel import get_subtopo
+    sdg = get_subtopo(dg, country='US')
+    return sdg
 
 #####################################################################
 
@@ -190,8 +200,8 @@ def bfs_bgp_simulate(dg : DiGraph, c_as: int, s_as_set : set):
 #####################################################################
 
 
-def load_stat(client_as_num = 20, max_server_num = 20):
-    stat = json.load(open("result/ntpstat.json"))
+def load_stat(file, client_as_num = 1, max_server_num = 100000):
+    stat = json.load(open(file))
     stat, _ = filter_stub_as(stat)
     stat1 = {}
     stubs = load_stub_str_list()
@@ -216,8 +226,8 @@ def load_stat(client_as_num = 20, max_server_num = 20):
     return stat2
 
 
-def route_sim(tmpfile):
-    stat = load_stat()
+def route_sim(statfile, tmpfile, client_as_num = 1, max_server_num = 100000):
+    stat = load_stat(statfile, client_as_num, max_server_num)
     print(stat)
     dg = load_as_graph()
     stat1 = {}
@@ -240,8 +250,8 @@ def route_sim(tmpfile):
     json.dump(stat1, open(tmpfile,'w'))
 
 
-def route_sim_multiprocess(tmpfile):
-    stat = load_stat()
+def route_sim_multiprocess(statfile, tmpfile, client_as_num = 1, max_server_num = 100000):
+    stat = load_stat(statfile, client_as_num, max_server_num)
     print(stat)
     dg = load_as_graph()
     stat1 = {}
@@ -277,9 +287,11 @@ def route_sim_multiprocess(tmpfile):
 def bandwidth_consume(stat: dict, fs_set, block_at_client_upstream=False, metric_func=None):
     total = .0
     fn = .0
+    un = .0
     f_blocked = .0
     upstream_blocked = .0
-    un = .0
+    f_b_m = .0
+    u_b_m = .0
     if fs_set is None:
         fs_set = set()
     if metric_func is None:
@@ -298,15 +310,30 @@ def bandwidth_consume(stat: dict, fs_set, block_at_client_upstream=False, metric
             if blocked:
                 fn += 1
                 f_blocked += metric*(len(t['route']) - i)
+                f_b_m += metric
             elif block_at_client_upstream:
                 un += 1
                 upstream_blocked += metric
+                u_b_m += metric
 
-    return total, fn, f_blocked, un, upstream_blocked
+    return total, fn, f_blocked, un, upstream_blocked, f_b_m, u_b_m
+
+
+def get_rate(stat, f_as, func):
+    total, fn, f_blocked, un, upstream_blocked, f_b_m, u_b_m = bandwidth_consume(stat, None, True, func)
+    r1 = upstream_blocked / total
+    total, fn, f_blocked, un, upstream_blocked, f_b_m, u_b_m = bandwidth_consume(stat, f_as, True, func)
+    r2 = f_blocked / total
+    r3 = fn / (fn + un)
+    r4 = (f_blocked + upstream_blocked) / total
+    r5 = f_b_m / (f_b_m + u_b_m)
+    return r1,r2,r3,r4,r5
+
+
+tier1 = [7018,209,3356,3549,4323,3320,3257,4436,286,6830,2914,5511,3491,1239,6453,6762,12956,1299,701,702,703,2828,6461]
 
 
 def select_f_as(n):
-    tier1 = [7018,209,3356,3549,4323,3320,3257,4436,286,6830,2914,5511,3491,1239,6453,6762,12956,1299,701,702,703,2828,6461]
     return random.sample(tier1,n)
 
 
@@ -324,47 +351,109 @@ def filter_stub_as(stat):
     return stat1, upstream
 
 
-def block_traffic_sim(tmpfile):
-    stat = json.load(open(tmpfile))
+def block_traffic_sim(select_stat_file, sim_save_file):
+    stat = json.load(open(select_stat_file))
     stat, upstream = filter_stub_as(stat)
     data = []
-    func = lambda x : 1
+    func = lambda x : x
     for n in range(1,24):
         for i in range(1000):
-            total, fn, f_blocked, un, upstream_blocked = bandwidth_consume(stat, None, True, func)
-            r1 = upstream_blocked / total
             f_as = set(select_f_as(n))
-            total, fn, f_blocked, un, upstream_blocked = bandwidth_consume(stat, f_as, True, func)
-            r2 = f_blocked / total
-            r3 = fn / (fn+un)
-            r4 = (f_blocked + upstream_blocked)/total
-            data.append([n, r1, r2, r3, r4])
+            r = get_rate(stat, f_as, func)
+            data.append([n, *r])
+
+    all_set = set(tier1)
+    curr = set()
+    for n in range(1,24):
+        tmp_list = []
+        for i_as in all_set-curr:
+            n_set = curr | {i_as}
+            r = get_rate(stat, n_set, func)
+            tmp_list.append(([n, *r], n_set))
+        tmp_list.sort(key=lambda x: x[0][4],reverse=True)
+        data.append(tmp_list[0][0])
+        curr = tmp_list[0][1]
+
+    curr = set()
+    for n in range(1,24):
+        tmp_list = []
+        for i_as in all_set-curr:
+            n_set = curr | {i_as}
+            r = get_rate(stat, n_set, func)
+            tmp_list.append(([n, *r], n_set))
+        tmp_list.sort(key=lambda x: x[0][4])
+        data.append(tmp_list[0][0])
+        curr = tmp_list[0][1]
+
     c0 = "Number of selected Tier 1 AS"
     c1 = "Option2 bandwidth saving"
     c2 = "Option3 FRIENDAS bandwidth saving"
     c3 = "Option3 FRIENDAS block rate"
     c4 = "Option3 Total bandwidth saving"
-    df = pd.DataFrame(data, columns=[c0, c1, c2, c3, c4])
+    c5 = "Option3 FRIENDAS block traffic rate"
+    df = pd.DataFrame(data, columns=[c0, c1, c2, c3, c4, c5])
+    df.to_csv(sim_save_file)
+
+
+def block_sim_plot(sim_save_file, fig_save=False, fig_suffix=""):
+    c0 = "Number of selected Tier 1 AS"
+    c1 = "Option2 bandwidth saving"
+    c2 = "Option3 FRIENDAS bandwidth saving"
+    c3 = "Option3 FRIENDAS block rate"
+    c4 = "Option3 Total bandwidth saving"
+    c5 = "Option3 FRIENDAS block traffic rate"
+    df = pd.read_csv(sim_save_file)
 
     def sim_plot(x, y, df, name=None):
         plt.clf()
-        sns.boxplot(x=x, y=y, data=df)
+        # sns.boxplot(x=x, y=y, data=df)
+        # df.boxplot(column=[y], by=[x])
+        data = dict(list(df.groupby(x)))
+        xi = list(range(1,24))
+        yy = [list(data[i][y]) for i in xi]
+        plt.boxplot(yy)
+        plt.xticks(xi)
+        plt.xlabel(x)
+        plt.ylabel(y)
         # sns.plt.ylim([0.,1.])
-        plt.show()
-        # plt.savefig("result/"+name+".png", dpi=300, bbox_inches='tight')
+        if fig_save:
+            plt.savefig("result/"+name+fig_suffix+".png", dpi=300, bbox_inches='tight')
+        else:
+            plt.show()
 
     sim_plot(c0, c1, df, "result-nf-bandwidth-saving")
     sim_plot(c0, c2, df, "result-f-bandwidth-saving")
     sim_plot(c0, c3, df, "result-f-block-rate")
     sim_plot(c0, c4, df, "result-f-total-bandwidth-saving")
+    sim_plot(c0, c5, df, "result-f-block-traffic-rate")
 
 
+#####################################################################
+
+def gen_stat(statfile):
+    stat={}
+    a = stat[62468] = {}
+    nameservers = pd.read_csv("data/nameservers.csv",dtype=str)
+    for ip in random.sample(list(nameservers['ip']),3000):
+        a[ip]=1.0
+    json.dump(stat, open(statfile,'w'))
 
 
 #####################################################################
 
 
 if __name__ == "__main__":
-    tmp = 'result/select-ntp-stat1.json'
-    # route_sim(tmp)
-    block_traffic_sim(tmp)
+    stat_file = "result/ntpstat.json"
+    select_stat_file = 'result/select-ntp-stat-10-1000.json'
+    sim_save_file = 'result/sim-ntp-stat-10-1000.csv'
+
+    # gen_stat(stat_file)
+
+    route_sim(stat_file, select_stat_file, 10, 1000)
+    block_traffic_sim(select_stat_file, sim_save_file)
+    block_sim_plot(sim_save_file, fig_save=True, fig_suffix="-10-1000")
+
+    # g = us_topo()
+    # print(len(g.nodes)) 16697
+    # print(len(g.edges)) 79814
+
