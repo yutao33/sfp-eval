@@ -8,8 +8,8 @@ import networkx as nx
 
 # import seaborn as sns
 import pandas as pd
+import numpy as np
 import multiprocessing
-
 
 from sfp_eval.correctness.advertise import fp_bgp_advertise
 
@@ -98,6 +98,9 @@ def fp_bgp_simulate(dg : DiGraph, c_as: int, s_as_set : set):
         fp_bgp_advertise(g)
     routes = {}
     for a in s_as_set:
+        if a not in g.nodes:
+            print("a not in g.nodes")
+            continue
         a_rib = g.node[a]['rib']
         assert isinstance(a_rib, PyTricia)
         r = a_rib.get("1.1.1.1/24")
@@ -351,44 +354,46 @@ def filter_stub_as(stat):
     return stat1, upstream
 
 
-def block_traffic_sim(select_stat_file, sim_save_file):
+def block_traffic_sim(select_stat_file, sim_save_file, random_loop=1000):
     stat = json.load(open(select_stat_file))
     stat, upstream = filter_stub_as(stat)
     data = []
     func = lambda x : x
     for n in range(1,24):
-        for i in range(1000):
+        print("n=%d"%n)
+        for i in range(random_loop):
+            print("i=%d"%i)
             f_as = set(select_f_as(n))
             r = get_rate(stat, f_as, func)
             data.append([n, *r])
 
-    all_set = set(tier1)
-    curr = set()
-    for n in range(1,24):
-        tmp_list = []
-        for i_as in all_set-curr:
-            n_set = curr | {i_as}
-            r = get_rate(stat, n_set, func)
-            tmp_list.append(([n, *r], n_set))
-        tmp_list.sort(key=lambda x: x[0][4],reverse=True)
-        data.append(tmp_list[0][0])
-        curr = tmp_list[0][1]
-
-    curr = set()
-    for n in range(1,24):
-        tmp_list = []
-        for i_as in all_set-curr:
-            n_set = curr | {i_as}
-            r = get_rate(stat, n_set, func)
-            tmp_list.append(([n, *r], n_set))
-        tmp_list.sort(key=lambda x: x[0][4])
-        data.append(tmp_list[0][0])
-        curr = tmp_list[0][1]
+    # all_set = set(tier1)
+    # curr = set()
+    # for n in range(1,24):
+    #     tmp_list = []
+    #     for i_as in all_set-curr:
+    #         n_set = curr | {i_as}
+    #         r = get_rate(stat, n_set, func)
+    #         tmp_list.append(([n, *r], n_set))
+    #     tmp_list.sort(key=lambda x: x[0][4],reverse=True)
+    #     data.append(tmp_list[0][0])
+    #     curr = tmp_list[0][1]
+    #
+    # curr = set()
+    # for n in range(1,24):
+    #     tmp_list = []
+    #     for i_as in all_set-curr:
+    #         n_set = curr | {i_as}
+    #         r = get_rate(stat, n_set, func)
+    #         tmp_list.append(([n, *r], n_set))
+    #     tmp_list.sort(key=lambda x: x[0][4])
+    #     data.append(tmp_list[0][0])
+    #     curr = tmp_list[0][1]
 
     c0 = "Number of selected Tier 1 AS"
     c1 = "Option2 bandwidth saving"
-    c2 = "Option3 FRIENDAS bandwidth saving"
-    c3 = "Option3 FRIENDAS block rate"
+    c2 = "FRIENDAS bandwidth saving"
+    c3 = "FRIENDAS block rate"
     c4 = "Option3 Total bandwidth saving"
     c5 = "Option3 FRIENDAS block traffic rate"
     df = pd.DataFrame(data, columns=[c0, c1, c2, c3, c4, c5])
@@ -398,8 +403,8 @@ def block_traffic_sim(select_stat_file, sim_save_file):
 def block_sim_plot(sim_save_file, fig_save=False, fig_suffix=""):
     c0 = "Number of selected Tier 1 AS"
     c1 = "Option2 bandwidth saving"
-    c2 = "Option3 FRIENDAS bandwidth saving"
-    c3 = "Option3 FRIENDAS block rate"
+    c2 = "FRIENDAS bandwidth saving"
+    c3 = "FRIENDAS block rate"
     c4 = "Option3 Total bandwidth saving"
     c5 = "Option3 FRIENDAS block traffic rate"
     df = pd.read_csv(sim_save_file)
@@ -421,39 +426,269 @@ def block_sim_plot(sim_save_file, fig_save=False, fig_suffix=""):
         else:
             plt.show()
 
-    sim_plot(c0, c1, df, "result-nf-bandwidth-saving")
+    # sim_plot(c0, c1, df, "result-nf-bandwidth-saving")
     sim_plot(c0, c2, df, "result-f-bandwidth-saving")
     sim_plot(c0, c3, df, "result-f-block-rate")
-    sim_plot(c0, c4, df, "result-f-total-bandwidth-saving")
-    sim_plot(c0, c5, df, "result-f-block-traffic-rate")
+    # sim_plot(c0, c4, df, "result-f-total-bandwidth-saving")
+    # sim_plot(c0, c5, df, "result-f-block-traffic-rate")
 
 
 #####################################################################
 
-def gen_stat(statfile):
+def bandwidth_consume_flowspec(stat: dict, sel_set, metric_func=None):
+    total_n = .0
+    total_m = .0
+    total_bw = .0
+    b_n = .0
+    b_m = .0
+    b_bw = .0
+    if sel_set is None:
+        sel_set = set()
+    if metric_func is None:
+        metric_func = lambda x : x
+    for c_stat in stat.values():
+        for t in c_stat.values():
+            metric = metric_func(t['vol'])
+            total_n +=1
+            total_m += metric
+            total_bw += metric *(len(t['route']) - 1)
+            blocked = False
+            i = 0
+            route = t['route'][:-1]
+            route.reverse()
+            for p in route:
+                if p in sel_set:
+                    i+=1
+                    blocked = True
+                else:
+                    break
+            if blocked:
+                b_bw += metric*i
+                b_m += metric
+                b_n += 1
+    return total_n, total_m, total_bw, b_n, b_m, b_bw
+
+
+def get_rate_flowspec(stat: dict, sel_set, metric_func=None):
+    r = bandwidth_consume_flowspec(stat, sel_set, metric_func)
+    return r[3]/r[0], r[4]/r[1], r[5]/r[2]
+
+
+def get_all_as():
+    stubs = load_stub_str_list()
+    g = load_as_graph()
+    stubs = set([int(a) for a in stubs])
+    g_nodes = set([int(a) for a in g.nodes])
+    return g_nodes - stubs
+
+
+def block_traffic_sim_flowspec(select_stat_file, sim_save_file, random_loop=1000):
+    stat = json.load(open(select_stat_file))
+    stat, upstream = filter_stub_as(stat)
+    data = []
+    func = lambda x : x
+
+    all_as = get_all_as()
+    for n in range(1000,20000, 1000):
+        print("n=%d"%n)
+        for i in range(random_loop):
+            print("i=%d"%i)
+            sel_as = set(random.sample(all_as, n))
+            r = get_rate_flowspec(stat, sel_as, func)
+            data.append([n, *r])
+
+    c0 = "Number of selected Tier 1 AS"
+    c1 = "c1"
+    c2 = "FlowSpec block rate"
+    c3 = "FlowSpec bandwidth saving"
+    df = pd.DataFrame(data, columns=[c0, c1, c2, c3])
+    df.to_csv(sim_save_file)
+    print(sim_save_file)
+    print("to_csv")
+
+
+def block_sim_flowspec_plot(sim_save_file, fig_save=False, fig_suffix=""):
+    c0 = "Number of selected Tier 1 AS"
+    c1 = "c1"
+    c2 = "FlowSpec block rate"
+    c3 = "FlowSpec bandwidth saving"
+    df = pd.read_csv(sim_save_file)
+    print(df)
+
+    def sim_plot(x, y, df, name=None):
+        plt.clf()
+        # sns.boxplot(x=x, y=y, data=df)
+        # df.boxplot(column=[y], by=[x])
+        data = dict(list(df.groupby(x)))
+        xi = list(data.keys())
+        xi.sort()
+        yy = [list(data[i][y]) for i in xi]
+        plt.boxplot(yy)
+        plt.xticks(list(range(1,len(xi)+1)),xi)
+        plt.xlabel("Number of FlowSpec AS")
+        plt.ylabel(y)
+        # sns.plt.ylim([0.,1.])
+        if fig_save:
+            plt.savefig("result/"+name+fig_suffix+".png", dpi=300, bbox_inches='tight')
+        else:
+            plt.show()
+
+    sim_plot(c0, c2, df, "result-fspec-block-rate")
+    sim_plot(c0, c3, df, "result-fspec-bandwidth-saving")
+
+
+
+
+
+
+
+
+#####################################################################
+
+def get_as_country(filepath="as-country.txt"):
+    asn_country = {}
+    country_asn_set = {}
+    with open(filepath, 'r') as as_country:
+        for line in as_country.readlines():
+            asn, country = line.strip('\n').split('|')
+            asn_country[asn]=country
+            country_asn_set.setdefault(country, set())
+            country_asn_set[country].add(asn)
+    return asn_country, country_asn_set
+
+
+def gen_stat(statfile, stubs_num = 10, dns_server_num = 3000, stubs_country_set=None, dns_country_set=None):
+    stubs = load_stub_str_list()
+    asn_country, country_asn_set = get_as_country()
+
+    if stubs_country_set:
+        select_country_as = set()
+        for i in stubs_country_set:
+            select_country_as |= country_asn_set[i]
+    else:
+        select_country_as= set(asn_country.keys())
+
+    select_stubs = set(stubs) & select_country_as
+
+    select_stubs = random.sample(select_stubs, stubs_num)
+
+    nameservers = pd.read_csv("data/nameservers.csv", dtype=str)
+
+    country_col = nameservers.columns[2]
+    ip_col = nameservers.columns[0]
+    dns_ip_list = []
+    for i, row in nameservers.iterrows():
+        ip = str(row[ip_col])
+        if ":" in ip:
+            continue
+        if dns_country_set:
+            country = str(row[country_col])
+            if country not in dns_country_set:
+                continue
+        dns_ip_list.append(ip)
+
     stat={}
-    a = stat[62468] = {}
-    nameservers = pd.read_csv("data/nameservers.csv",dtype=str)
-    for ip in random.sample(list(nameservers['ip']),3000):
-        a[ip]=1.0
-    json.dump(stat, open(statfile,'w'))
+    for asn in select_stubs:
+        a = stat[asn] = {}
+        for ip in random.sample(dns_ip_list,dns_server_num):
+            a[ip]=1.0
+    json.dump(stat, open(statfile,'w'), indent=4)
 
 
 #####################################################################
+
+
+def stat():
+    alldf = []
+    for i in range(19):
+        df = pd.read_csv("/home/yutao/Desktop/data-dns-dsr6059" + "/" + str(i) + ".csv", dtype=str);
+        alldf.append(df)
+    df = pd.concat(alldf, axis=0, ignore_index=True)
+    df1 = df[df['src_port'] == '53']
+    df2 = df1[df1['dst'] == '144.154.222.228']
+    a = np.array(df2.iplen.astype(int))
+    b = a+14
+    t1 = b.sum()
+    print(t1/1996/(1000*1000)*8, "Mbps")  # 0.574 Mbps
+    df1iplen = df1.iplen.astype(int)
+    t2 = df1iplen.sum()
+    print(t2 / 1996 / (1000 * 1000) * 8, "Mbps") # 0.569 Mbps
+    df3 = df[df['dst_port'] == '53']
+    df3iplen = df3.iplen.astype(int)
+    t3 = df3iplen.sum()
+    print(t3 / 1996 / (1000 * 1000) * 8, "Mbps")  # 0.002 Mbps
+    df4 = df3[df3['src']=='144.154.222.228']
+
+
+def dns_server_dist_plot():
+    nameservers = pd.read_csv("data/nameservers.csv", dtype=str)
+    country = nameservers.columns[2]
+    ip = nameservers.columns[0]
+    d  = nameservers[[country, ip]]
+    num_list = d.groupby(country).count()[ip]
+    num_list = num_list.sort_values(0,False)
+    x=[]; y=[]
+    for i in range(30):
+        x.append(str(num_list.index[i]))
+        y.append(num_list[i])
+    xv = list(range(30))
+    plt.bar(xv,y)
+    plt.xticks(xv,x)
+    plt.show()
+
+
+def dump_as_name(f="as-country-raw.txt"):
+    lines = open(f).readlines()
+    lines = [l.strip() for l in lines]
+    lines = [l for l in lines if len(l)>0]
+    map={}
+    for i in range(len(lines)//2):
+        asn = lines[i*2]
+        addr = lines[i * 2+1]
+        map[asn[2:]]=addr
+    return map
+
+
+def get_tier1_as():
+    g = load_as_graph()
+    ret = []
+    for i in g.nodes:
+        if all(adj['rel']!='cp' for adj in g.adj[i].values()):
+            ret.append(i)
+    return ret
+
 
 
 if __name__ == "__main__":
-    stat_file = "result/ntpstat.json"
-    select_stat_file = 'result/select-ntp-stat-10-1000.json'
-    sim_save_file = 'result/sim-ntp-stat-10-1000.csv'
+    tier1_1 = get_tier1_as()
+    print(tier1_1)
+    print(len(tier1_1))
+    print(set(tier1) & set(tier1_1))
 
-    # gen_stat(stat_file)
 
-    route_sim(stat_file, select_stat_file, 10, 1000)
-    block_traffic_sim(select_stat_file, sim_save_file)
-    block_sim_plot(sim_save_file, fig_save=True, fig_suffix="-10-1000")
+    common = "gen-stat-10CN-10000"
 
+    stat_file = "result/%s.json"%common
+    select_stat_file = 'result/select-%s-10-max.json'%common
+    sim_save_file = 'result/sim-%s-10-max-alltier1.csv'%common
+
+    # dns_server_dist_plot()
+    # gen_stat(stat_file, 10, 10000, ["CN"], None)
+
+    # route_sim(stat_file, select_stat_file, 10, 1000000)
+    # block_traffic_sim(select_stat_file, sim_save_file, 100)
+    block_sim_plot(sim_save_file, fig_save=False, fig_suffix=common)
+
+    sim_save_file1 = 'result/sim-flowspec-%s-10-3000.csv' % common
+    # block_traffic_sim_flowspec(select_stat_file, sim_save_file1, 10)
+    # block_sim_flowspec_plot(sim_save_file1, fig_save=False, fig_suffix=common)
     # g = us_topo()
     # print(len(g.nodes)) 16697
     # print(len(g.edges)) 79814
+    # map = dump_as_name()
+    # a = json.load(open(stat_file))
+    # for s in a:
+    #     print(s, map.get(s))
+    # print(len(get_all_as()))  # 37103    100 3000
+
 
