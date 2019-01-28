@@ -71,15 +71,15 @@ def generate_stat(stat_file, target_num = 10, dns_server_num = 3000, target_coun
 
 
 def main():
-    common = "gen-stat-20World-5000World-1"
+    common = "gen-stat-40World-5000World-1"
 
     stat_file = "result/%s.json" % common
     sim_route_file = 'result/%s-sim-route.json' % common
     sim_block_file_both = 'result/%s-sim-block.csv' % common
 
-    # generate_stat(stat_file, 20, 5000, None, None)
-    # route_sim(stat_file, sim_route_file)
-    # block_traffic_sim_both(sim_route_file, sim_block_file_both, list(range(1000,10500, 500)) , 10, incremental=True)
+    generate_stat(stat_file, 40, 5000, None, None)
+    route_sim(stat_file, sim_route_file)
+    block_traffic_sim_both(sim_route_file, sim_block_file_both, list(range(1000,10500, 500)) , 10, incremental=True)
     block_sim_both_plot(sim_block_file_both, fig_save=True, name_prefix=common + "-")
 
 

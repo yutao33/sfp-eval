@@ -108,7 +108,7 @@ def box_plot(x, y, df, name="fig", save=False):
     plt.ylabel(y)
     # sns.plt.ylim([0.,1.])
     if save:
-        plt.savefig("result/"+name+".png", dpi=300, bbox_inches='tight')
+        plt.savefig("result/"+name+".pdf", dpi=300, bbox_inches='tight')
     else:
         plt.show()
 
