@@ -6,7 +6,6 @@ from pytricia import PyTricia
 from networkx import DiGraph, Graph
 import networkx as nx
 
-# import seaborn as sns
 import pandas as pd
 import numpy as np
 import multiprocessing
@@ -119,87 +118,6 @@ def fp_bgp_simulate(dg : DiGraph, c_as: int, s_as_set : set):
     return routes
 
 
-
-#####################################################################
-
-
-def verify(dg, sp):
-    if len(sp)<=2:
-        return True
-    for i in range(1,len(sp)-1):
-        pre = sp[i-1]
-        cu = sp[i]
-        ne = sp[i+1]
-        r1 = dg.edges[pre,cu]["rel"]
-        r2 = dg.edges[cu, ne]["rel"]
-        if r1=="pp" or r1=="pc":
-            assert r2 == "pc"
-    return True
-
-
-def bfs_bgp_simulate(dg : DiGraph, c_as: int, s_as_set : set):
-    print("error")
-    # g = dg.copy()
-    # s_as = set(int(i) for i in s_as_set)
-    # ll = set()
-    # ll.add(c_as)
-    # visited = set()
-    # visited.update(ll)
-    # g.node[c_as]["as_paths"]=[[c_as]]
-    # for n in g.nodes:
-    #     g.node[n]["visited"] = False
-    # g.node[c_as]["visited"] = True
-    # while True:
-    #     ll_next = set()
-    #     for k in ll:
-    #         k_aspaths = g.node[k]["as_paths"]
-    #         for m in g.adj[k]:
-    #             mn = g.node[m]
-    #             if not mn["visited"]:
-    #                 assert isinstance(mn, dict)
-    #                 mn.setdefault("as_paths",[])
-    #                 for k_aspath in k_aspaths:
-    #                     path_new = list(k_aspath)
-    #                     path_new.append(m)
-    #                     if len(k_aspath)==1:
-    #                         mn["as_paths"].append(path_new)
-    #                         ll_next.add(m)
-    #                         break
-    #                     else:
-    #                         pre = k_aspath[-2]
-    #                         cu = k_aspath[-1]
-    #                         assert cu==k
-    #                         rel = g.edges[pre, cu]['rel']
-    #                         if rel=="pp" or rel=="pc":
-    #                             rel1 = g.edges[cu,m]['rel']
-    #                             if rel1=="pc":
-    #                                 mn["as_paths"].append(path_new)
-    #                                 ll_next.add(m)
-    #                                 break
-    #                         else:
-    #                             mn["as_paths"].append(path_new)
-    #                             ll_next.add(m)
-    #                             break
-    #     for k in ll_next:
-    #         g.node[k]["visited"]=True
-    #         print(len(g.node[k]["as_paths"]))
-    #     ll = ll_next
-    #     if len(ll)==0:
-    #         break
-    #     visited.update(ll)
-    #     if s_as.issubset(visited):
-    #         break
-    # ret = {}
-    # for s in s_as:
-    #     ps = g.node[int(s)].get("as_paths")
-    #     if ps is None:
-    #         print("no route %s %s" %(str(c_as),str(s)))
-    #         continue
-    #     verify(dg, ps[0])
-    #     ret[s]=ps[0]
-    # return ret
-
-
 #####################################################################
 
 
@@ -231,7 +149,6 @@ def load_stat(file, client_as_num = 1, max_server_num = 100000):
 
 def route_sim(statfile, tmpfile, client_as_num = 1, max_server_num = 100000):
     stat = load_stat(statfile, client_as_num, max_server_num)
-    print(stat)
     dg = load_as_graph()
     stat1 = {}
     for c_as,c_stat in stat.items():
@@ -250,7 +167,7 @@ def route_sim(statfile, tmpfile, client_as_num = 1, max_server_num = 100000):
         if c_stat1:
             stat1[c_as] = c_stat1
 
-    json.dump(stat1, open(tmpfile,'w'))
+    json.dump(stat1, open(tmpfile,'w'), indent=4)
 
 
 def route_sim_multiprocess(statfile, tmpfile, client_as_num = 1, max_server_num = 100000):
@@ -281,7 +198,7 @@ def route_sim_multiprocess(statfile, tmpfile, client_as_num = 1, max_server_num 
                 print("r is None")
         if c_stat1:
             stat1[c_as] = c_stat1
-    json.dump(stat1, open(tmpfile,'w'))
+    json.dump(stat1, open(tmpfile,'w'), indent=4)
 
 
 #####################################################################
@@ -369,28 +286,28 @@ def block_traffic_sim(select_stat_file, sim_save_file, random_loop=1000):
             r = get_rate(stat, f_as, func)
             data.append([n, *r])
 
-    # all_set = set(tier1)
-    # curr = set()
-    # for n in range(1,24):
-    #     tmp_list = []
-    #     for i_as in all_set-curr:
-    #         n_set = curr | {i_as}
-    #         r = get_rate(stat, n_set, func)
-    #         tmp_list.append(([n, *r], n_set))
-    #     tmp_list.sort(key=lambda x: x[0][4],reverse=True)
-    #     data.append(tmp_list[0][0])
-    #     curr = tmp_list[0][1]
-    #
-    # curr = set()
-    # for n in range(1,24):
-    #     tmp_list = []
-    #     for i_as in all_set-curr:
-    #         n_set = curr | {i_as}
-    #         r = get_rate(stat, n_set, func)
-    #         tmp_list.append(([n, *r], n_set))
-    #     tmp_list.sort(key=lambda x: x[0][4])
-    #     data.append(tmp_list[0][0])
-    #     curr = tmp_list[0][1]
+    all_set = set(tier1)
+    curr = set()
+    for n in range(1,24):
+        tmp_list = []
+        for i_as in all_set-curr:
+            n_set = curr | {i_as}
+            r = get_rate(stat, n_set, func)
+            tmp_list.append(([n, *r], n_set))
+        tmp_list.sort(key=lambda x: x[0][4],reverse=True)
+        data.append(tmp_list[0][0])
+        curr = tmp_list[0][1]
+
+    curr = set()
+    for n in range(1,24):
+        tmp_list = []
+        for i_as in all_set-curr:
+            n_set = curr | {i_as}
+            r = get_rate(stat, n_set, func)
+            tmp_list.append(([n, *r], n_set))
+        tmp_list.sort(key=lambda x: x[0][4])
+        data.append(tmp_list[0][0])
+        curr = tmp_list[0][1]
 
     c0 = "Number of selected Tier 1 AS"
     c1 = "Option2 bandwidth saving"
@@ -428,11 +345,11 @@ def block_sim_plot(sim_save_file, fig_save=False, fig_suffix=""):
         else:
             plt.show()
 
-    # sim_plot(c0, c1, df, "result-nf-bandwidth-saving")
+    sim_plot(c0, c1, df, "result-nf-bandwidth-saving")
     sim_plot(c0, c2, df, "result-f-bandwidth-saving")
     sim_plot(c0, c3, df, "result-f-block-rate")
-    # sim_plot(c0, c4, df, "result-f-total-bandwidth-saving")
-    # sim_plot(c0, c5, df, "result-f-block-traffic-rate")
+    sim_plot(c0, c4, df, "result-f-total-bandwidth-saving")
+    sim_plot(c0, c5, df, "result-f-block-traffic-rate")
 
 
 #####################################################################
@@ -791,88 +708,16 @@ def get_tier1_as():
 
 
 
-
-
-tier1_1 = get_tier1_as()
-# print(tier1_1)
-# print(len(tier1_1))
-# print(set(tier1) & set(tier1_1))
-# tier1 = tier1_1
-
-def check_route():
-    a= [[4788, 10099, 9929, 4808, 45087],
-        [9304, 15412, 10099, 9929, 4808, 45087],
-        [9600, 2527, 2497, 4134, 4847, 45087],
-        [34572, 35280, 4134, 4847, 45087],
-        [9269, 4809, 4847, 45087],
-        [18026, 3786, 4847, 45087],
-        [8220, 4134, 4847, 45087],
-        [4755, 133296, 40676, 8100, 9009, 206499, 205591, 43727, 35168, 43994, 200590, 57724, 32708, 4837, 4808, 45087],
-        [4589, 8928, 4837, 4808, 45087],
-        [38478, 4809, 4847, 45087],
-        [132199, 4775, 4637, 4134, 4847, 45087],
-        [131353, 18403, 4809, 4847, 45087],
-        [4766, 4134, 4847, 45087],
-        [3462, 17408, 703, 10099, 9929, 4808, 45087],
-        [3462, 17408, 703, 10099, 9929, 4808, 45087],
-        [131745, 45352, 4809, 4847, 45087],
-        [4788, 10099, 9929, 4808, 45087],
-        [51765, 6939, 4766, 4134, 4847, 45087],
-        [43038, 8359, 29076, 43727, 35168, 43994, 200590, 57724, 32708, 4837, 4808, 45087],
-        [6327, 4134, 4847, 45087],
-        [59278, 17451, 4809, 4847, 45087],
-        [18229, 9498, 37662, 4809, 4847, 45087],
-        [131293, 38040, 4809, 4847, 45087],
-        [3462, 17408, 703, 10099, 9929, 4808, 45087],
-        [3462, 17408, 703, 10099, 9929, 4808, 45087],
-        [1659, 6939, 4766, 4134, 4847, 45087],
-        [23969, 38040, 4809, 4847, 45087]]
-    for aa in a:
-        print(set(aa) & set(tier1_1))
-
-    g = load_as_graph()
-    for aa in a:
-        print(aa)
-        for i in range(len(aa)-1):
-            p = aa[i]
-            q = aa[i+1]
-            print(g.edges[p,q]['rel'], end=" ")
-        print("")
-
-
 if __name__ == "__main__":
     common = "gen-stat-20World-5000World"
 
-    stat_file = "result/%s.json"%common
+    stat_file = "result/%s.json" % common
     select_stat_file = 'result/select-%s-20-max.json'%common
-    sim_save_file = 'result/sim-%s-10-max-alltier1.csv'%common
-
-    # dns_server_dist_plot()
-    # gen_stat(stat_file, 20, 5000, None, None)
-
-    # route_sim(stat_file, select_stat_file, 10, 1000000)
-    # block_traffic_sim(select_stat_file, sim_save_file, 10)
-    # block_sim_plot(sim_save_file, fig_save=False, fig_suffix=common)
-
-    sim_save_file1 = 'result/sim-flowspec-%s-10-3000.csv' % common
-    # block_traffic_sim_flowspec(select_stat_file, sim_save_file1, 10)
-    # block_sim_flowspec_plot(sim_save_file1, fig_save=False, fig_suffix=common)
-
     sim_save_file_both = 'result/sim-both-%s-10-3000.csv' % common
-    block_traffic_sim_both(select_stat_file, sim_save_file_both, 50)
-    # block_sim_both_plot(sim_save_file_both, fig_save=False, fig_suffix=common)
 
-    # g = us_topo()
-    # print(len(g.nodes)) 16697
-    # print(len(g.edges)) 79814
-    # map = dump_as_name()
-    # a = json.load(open(stat_file))
-    # for s in a:
-    #     print(s, map.get(s))
-    # print(len(get_all_as()))  # 37103    100 3000
-    # stat = json.load(open(select_stat_file))
-    # stat, upstream = filter_stub_as(stat)
-    # print(get_rate(stat, tier1_1, None))  0.5555285262510196
+    gen_stat(stat_file, 20, 5000, None, None)
+    block_traffic_sim_both(select_stat_file, sim_save_file_both, 50)
+    block_sim_both_plot(sim_save_file_both, fig_save=False, fig_suffix=common)
 
 
 
