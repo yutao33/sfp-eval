@@ -14,7 +14,11 @@ asndb = pyasn.pyasn(DEFAULT_ASNDB)
 
 
 def get_vaild_dns_lists():
-    return {}
+    j = json.load(open('data/dnsstat.json'))
+    r = {}
+    for k,v in j.items():
+        r[int(k)] = list(v.keys())
+    return r
 
 
 def asn_lookup(ip):
@@ -60,6 +64,7 @@ def get_as_country(filepath="as-country.txt"):
     with open(filepath, 'r') as as_country:
         for line in as_country.readlines():
             asn, country = line.strip('\n').split('|')
+            asn = int(asn)
             asn_country[asn]=country
             country_asn_set.setdefault(country, set())
             country_asn_set[country].add(asn)
@@ -103,7 +108,7 @@ def box_plot(x, y, df, name="fig", save=False):
     plt.ylabel(y)
     # sns.plt.ylim([0.,1.])
     if save:
-        plt.savefig("result/"+name+".pdf", dpi=300, bbox_inches='tight')
+        plt.savefig("result/"+name+".png", dpi=300, bbox_inches='tight')
     else:
         plt.show()
 

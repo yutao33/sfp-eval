@@ -25,6 +25,9 @@ def bandwidth_consume_friend(stat: dict, sel_set, metric_func=None):
             total_bw += metric *(len(t['route']) - 1)
             blocked = False
 
+            if "inwhitelist" in t and t["inwhitelist"]:
+                continue
+
             i = 0
             for p in t['route'][:-1]:
                 i += 1
@@ -37,8 +40,6 @@ def bandwidth_consume_friend(stat: dict, sel_set, metric_func=None):
                 b_bw += metric*(len(t['route']) - i)
                 b_m += metric
                 b_n += 1
-            else:
-                print("not blocked")
     return total_n, total_m, total_bw, b_n, b_m, b_bw
 
 
@@ -64,6 +65,9 @@ def bandwidth_consume_flowspec(stat: dict, sel_set, metric_func=None):
             total_n +=1
             total_m += metric
             total_bw += metric *(len(t['route']) - 1)
+            if "inwhitelist" in t and t["inwhitelist"]:
+                continue
+
             blocked = False
             i = 0
             route = t['route'][:-1]
@@ -160,8 +164,9 @@ def block_sim_both_plot(sim_save_file, fig_save=False, name_prefix=""):
     box_plot(c[0], c[2], df, name_prefix + "fspec-block-rate", fig_save)
     box_plot(c[0], c[3], df, name_prefix + "fspec-bandwidth-saving", fig_save)
     box_plot(c[0], c[5], df, name_prefix + "friend-block-rate", fig_save)
-    box_plot(c[0], c[6], df, name_prefix + "friend-just-bandwidth-saving", fig_save)
+    box_plot(c[0], c[6], df, name_prefix + "friend-bandwidth-saving", fig_save)
     # df = df[df[c[2]] != 0]
     # df['rate'] = df.apply(lambda x: x[c[5]]/x[c[2]], axis=1)
     # sim_plot(c[0], 'rate', df, "result-rate-block-rate")
+    print("plot done!")
 
