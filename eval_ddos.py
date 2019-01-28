@@ -38,6 +38,24 @@ def us_topo():
     sdg = get_subtopo(dg, country='US')
     return sdg
 
+
+def box_plot(x, y, df, name="fig", save=False):
+    plt.clf()
+    # sns.boxplot(x=x, y=y, data=df)
+    # df.boxplot(column=[y], by=[x])
+    data = dict(list(df.groupby(x)))
+    xi = list(data.keys())
+    xi.sort()
+    yy = [list(data[i][y]) for i in xi]
+    plt.boxplot(yy)
+    plt.xticks(list(range(1,len(xi)+1)),xi)
+    plt.ylabel(y)
+    # sns.plt.ylim([0.,1.])
+    if save:
+        plt.savefig("result/"+name+".pdf", dpi=300, bbox_inches='tight')
+    else:
+        plt.show()
+
 #####################################################################
 
 
@@ -319,7 +337,7 @@ def block_traffic_sim(select_stat_file, sim_save_file, random_loop=1000):
     df.to_csv(sim_save_file)
 
 
-def block_sim_plot(sim_save_file, fig_save=False, fig_suffix=""):
+def block_sim_plot(sim_save_file, fig_save=False, name_prefix=""):
     c0 = "Number of selected Tier 1 AS"
     c1 = "Option2 bandwidth saving"
     c2 = "FRIENDAS bandwidth saving"
@@ -327,29 +345,11 @@ def block_sim_plot(sim_save_file, fig_save=False, fig_suffix=""):
     c4 = "Option3 Total bandwidth saving"
     c5 = "Option3 FRIENDAS block traffic rate"
     df = pd.read_csv(sim_save_file)
-
-    def sim_plot(x, y, df, name=None):
-        plt.clf()
-        # sns.boxplot(x=x, y=y, data=df)
-        # df.boxplot(column=[y], by=[x])
-        data = dict(list(df.groupby(x)))
-        xi = list(range(1,24))
-        yy = [list(data[i][y]) for i in xi]
-        plt.boxplot(yy)
-        plt.xticks(xi)
-        plt.xlabel(x)
-        plt.ylabel(y)
-        # sns.plt.ylim([0.,1.])
-        if fig_save:
-            plt.savefig("result/"+name+fig_suffix+".png", dpi=300, bbox_inches='tight')
-        else:
-            plt.show()
-
-    sim_plot(c0, c1, df, "result-nf-bandwidth-saving")
-    sim_plot(c0, c2, df, "result-f-bandwidth-saving")
-    sim_plot(c0, c3, df, "result-f-block-rate")
-    sim_plot(c0, c4, df, "result-f-total-bandwidth-saving")
-    sim_plot(c0, c5, df, "result-f-block-traffic-rate")
+    box_plot(c0, c1, df, name_prefix + "nf-bandwidth-saving", fig_save)
+    box_plot(c0, c2, df, name_prefix + "f-bandwidth-saving", fig_save)
+    box_plot(c0, c3, df, name_prefix + "f-block-rate", fig_save)
+    box_plot(c0, c4, df, name_prefix + "f-total-bandwidth-saving", fig_save)
+    box_plot(c0, c5, df, name_prefix + "f-block-traffic-rate", fig_save)
 
 
 #####################################################################
@@ -468,35 +468,14 @@ def block_traffic_sim_flowspec(select_stat_file, sim_save_file, random_loop=1000
     print("to_csv")
 
 
-
-def block_sim_flowspec_plot(sim_save_file, fig_save=False, fig_suffix=""):
+def block_sim_flowspec_plot(sim_save_file, fig_save=False, name_prefix=""):
     c0 = "Number of selected Tier 1 AS"
     c1 = "c1"
     c2 = "FlowSpec block rate"
     c3 = "FlowSpec bandwidth saving"
     df = pd.read_csv(sim_save_file)
-    print(df)
-
-    def sim_plot(x, y, df, name=None):
-        plt.clf()
-        # sns.boxplot(x=x, y=y, data=df)
-        # df.boxplot(column=[y], by=[x])
-        data = dict(list(df.groupby(x)))
-        xi = list(data.keys())
-        xi.sort()
-        yy = [list(data[i][y]) for i in xi]
-        plt.boxplot(yy)
-        plt.xticks(list(range(1,len(xi)+1)),xi)
-        plt.xlabel("Number of FlowSpec AS")
-        plt.ylabel(y)
-        # sns.plt.ylim([0.,1.])
-        if fig_save:
-            plt.savefig("result/"+name+fig_suffix+".png", dpi=300, bbox_inches='tight')
-        else:
-            plt.show()
-
-    sim_plot(c0, c2, df, "result-fspec-block-rate")
-    sim_plot(c0, c3, df, "result-fspec-bandwidth-saving")
+    box_plot(c0, c2, df, name_prefix + "fspec-block-rate", fig_save)
+    box_plot(c0, c3, df, name_prefix + "fspec-bandwidth-saving", fig_save)
 
 
 #####################################################################
@@ -509,10 +488,6 @@ def block_traffic_sim_both(select_stat_file, sim_save_file, random_loop=1000):
     func = lambda x : x
 
     all_as = get_all_as()
-
-    # r = get_rate_flowspec(stat, all_as, func)
-    r_f = get_rate_just_f(stat, all_as, func)
-    print(r_f)
 
     for n in range(1000,10000, 1000):
         print("n=%d"%n)
@@ -538,45 +513,16 @@ def block_traffic_sim_both(select_stat_file, sim_save_file, random_loop=1000):
     print("to_csv")
 
 
-def block_sim_both_plot(sim_save_file, fig_save=False, fig_suffix=""):
+def block_sim_both_plot(sim_save_file, fig_save=False, name_prefix=""):
     df = pd.read_csv(sim_save_file)
     c = df.columns
-    print(df)
-
-    def sim_plot(x, y, df, name=None):
-        plt.clf()
-        # sns.boxplot(x=x, y=y, data=df)
-        # df.boxplot(column=[y], by=[x])
-        data = dict(list(df.groupby(x)))
-        xi = list(data.keys())
-        xi.sort()
-        yy = [list(data[i][y]) for i in xi]
-        plt.boxplot(yy)
-        plt.xticks(list(range(1,len(xi)+1)),xi)
-        # plt.xlabel("Number of FlowSpec AS")
-        plt.ylabel(y)
-        # sns.plt.ylim([0.,1.])
-        if fig_save:
-            plt.savefig("result/"+name+"-" + fig_suffix + ".pdf", dpi=300, bbox_inches='tight')
-        else:
-            plt.show()
-
-    df = df[df[c[2]] != 0]
-    df['rate'] = df.apply(lambda x: x[c[5]]/x[c[2]], axis=1)
-    print(df)
-
-    # sim_plot(c[0], c[2], df, "result-fspec-block-rate")
-    # sim_plot(c[0], c[3], df, "result-fspec-bandwidth-saving")
-    # sim_plot(c[0], c[5], df, "result-f-just-block-rate")
-    # sim_plot(c[0], c[6], df, "result-f-just-bandwidth-saving")
-
-    sim_plot(c[0], 'rate', df, "result-rate-block-rate")
-
-
-
-
-
-
+    box_plot(c[0], c[2], df, name_prefix + "fspec-block-rate", fig_save)
+    box_plot(c[0], c[3], df, name_prefix + "fspec-bandwidth-saving", fig_save)
+    box_plot(c[0], c[5], df, name_prefix + "friend-block-rate", fig_save)
+    box_plot(c[0], c[6], df, name_prefix + "friend-just-bandwidth-saving", fig_save)
+    # df = df[df[c[2]] != 0]
+    # df['rate'] = df.apply(lambda x: x[c[5]]/x[c[2]], axis=1)
+    # sim_plot(c[0], 'rate', df, "result-rate-block-rate")
 
 
 #####################################################################
@@ -709,6 +655,8 @@ def get_tier1_as():
 
 
 if __name__ == "__main__":
+    name_prefix = "1-"
+
     common = "gen-stat-20World-5000World"
 
     stat_file = "result/%s.json" % common
@@ -717,7 +665,7 @@ if __name__ == "__main__":
 
     gen_stat(stat_file, 20, 5000, None, None)
     block_traffic_sim_both(select_stat_file, sim_save_file_both, 50)
-    block_sim_both_plot(sim_save_file_both, fig_save=False, fig_suffix=common)
+    block_sim_both_plot(sim_save_file_both, fig_save=False, name_prefix=name_prefix)
 
 
 
