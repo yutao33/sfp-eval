@@ -3,13 +3,13 @@ import random
 
 import pandas as pd
 
-from eval_ddos_utils import load_as_graph, load_stub_str_list, box_plot, filter_stub_as, get_non_stub_as_list
+from eval_ddos_utils import box_plot, filter_stub_as, get_non_stub_as_list
 
 
 def bandwidth_consume_friend(stat: dict, sel_set, metric_func=None):
-    total_n = .0
-    total_m = .0
-    total_bw = .0
+    total_n = .0  # flow number
+    total_m = .0  # flow metric
+    total_bw = .0 # flow metric for each link
     b_n = .0
     b_m = .0
     b_bw = .0
@@ -125,23 +125,38 @@ def get_rate_flowspec(stat: dict, sel_set, metric_func=None):
 #     box_plot(c0, c3, df, name_prefix + "fspec-bandwidth-saving", fig_save)
 
 
-
-def block_traffic_sim_both(select_stat_file, sim_save_file, sel_num_list, random_loop=1000):
+def block_traffic_sim_both(select_stat_file, sim_save_file, sel_num_list, random_loop=10, incremental=False):
     stat = json.load(open(select_stat_file))
-    stat, upstream = filter_stub_as(stat)
+    # stat, upstream = filter_stub_as(stat)
     data = []
     func = lambda x : x
 
     non_stub_as_list = get_non_stub_as_list()
 
-    for n in sel_num_list:
-        print("n=%d"%n)
-        for i in range(random_loop):
-            print("i=%d"%i)
-            sel_as = set(random.sample(non_stub_as_list, n))
-            r = get_rate_flowspec(stat, sel_as, func)
-            r_f = get_rate_friend(stat, sel_as, func)
-            data.append([n, *r, *r_f])
+    if incremental:
+        inc_sel_list = [(set(), set(non_stub_as_list)) for i in range(random_loop)]
+        for n in sel_num_list:
+            print("n=%d"%n)
+            for i in range(random_loop):
+                print("i=%d"%i)
+                curr, remained = inc_sel_list[i]
+                inc = random.sample(remained, n-len(curr))
+                for ii in inc:
+                    curr.add(ii)
+                    remained.remove(ii)
+                sel_as = set(curr)
+                r = get_rate_flowspec(stat, sel_as, func)
+                r_f = get_rate_friend(stat, sel_as, func)
+                data.append([n, *r, *r_f])
+    else:
+        for n in sel_num_list:
+            print("n=%d"%n)
+            for i in range(random_loop):
+                print("i=%d"%i)
+                sel_as = set(random.sample(non_stub_as_list, n))
+                r = get_rate_flowspec(stat, sel_as, func)
+                r_f = get_rate_friend(stat, sel_as, func)
+                data.append([n, *r, *r_f])
 
     c = [""] * 7
     c[0] = "Number of selected Tier 1 AS"
