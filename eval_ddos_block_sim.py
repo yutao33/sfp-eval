@@ -127,7 +127,7 @@ def get_rate_flowspec(stat: dict, sel_set, metric_func=None):
 #     box_plot(c0, c3, df, name_prefix + "fspec-bandwidth-saving", fig_save)
 
 
-def block_traffic_sim_both(select_stat_file, sim_save_file, sel_num_list, random_loop=10, incremental=False):
+def block_traffic_sim_both(select_stat_file, sim_save_file, sel_percent_list, random_loop=10, incremental=False):
     stat = json.load(open(select_stat_file))
     # stat, upstream = filter_stub_as(stat)
     data = []
@@ -137,7 +137,9 @@ def block_traffic_sim_both(select_stat_file, sim_save_file, sel_num_list, random
 
     if incremental:
         inc_sel_list = [(set(), set(non_stub_as_list)) for i in range(random_loop)]
-        for n in sel_num_list:
+        for pn in sel_percent_list:
+            n = int(len(non_stub_as_list)*pn)
+            print("pn=%d" % pn)
             print("n=%d"%n)
             for i in range(random_loop):
                 print("i=%d"%i)
@@ -151,7 +153,9 @@ def block_traffic_sim_both(select_stat_file, sim_save_file, sel_num_list, random
                 r_f = get_rate_friend(stat, sel_as, func)
                 data.append([n, *r, *r_f])
     else:
-        for n in sel_num_list:
+        for pn in sel_percent_list:
+            n = int(len(non_stub_as_list)*pn)
+            print("pn=%d" % pn)
             print("n=%d"%n)
             for i in range(random_loop):
                 print("i=%d"%i)
@@ -178,14 +182,16 @@ def block_traffic_sim_both(select_stat_file, sim_save_file, sel_num_list, random
 def block_sim_both_plot(sim_save_file, fig_save=False, name_prefix=""):
     df = pd.read_csv(sim_save_file)
     c = df.columns
-    # box_plot(c[0], c[2], df, name_prefix + "fspec-block-rate", fig_save)
-    # box_plot(c[0], c[3], df, name_prefix + "fspec-bandwidth-saving", fig_save)
-    # box_plot(c[0], c[5], df, name_prefix + "friend-block-rate", fig_save)
-    # box_plot(c[0], c[6], df, name_prefix + "friend-bandwidth-saving", fig_save)
+    box_plot(c[0], c[2], df, name_prefix + "fspec-block-rate", fig_save)
+    box_plot(c[0], c[3], df, name_prefix + "fspec-bandwidth-saving", fig_save)
+    box_plot(c[0], c[5], df, name_prefix + "friend-block-rate", fig_save)
+    box_plot(c[0], c[6], df, name_prefix + "friend-bandwidth-saving", fig_save)
 
     # df = df[df[c[2]] != 0]
     # df['rate'] = df.apply(lambda x: x[c[5]]/x[c[2]], axis=1)
     # sim_plot(c[0], 'rate', df, "result-rate-block-rate")
+
+    return
 
     x = c[0]
     y = c[2]

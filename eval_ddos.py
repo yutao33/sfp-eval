@@ -2,6 +2,7 @@ import json
 import random
 
 import pandas as pd
+import numpy as np
 
 from eval_ddos_block_sim import block_traffic_sim_both, block_sim_both_plot
 from eval_ddos_route_sim import route_sim
@@ -72,16 +73,16 @@ def generate_stat(stat_file, target_num = 10, dns_server_num = 3000, target_coun
 
 
 def main():
-    common = "gen-stat-40World-5000World-1"
+    common = "gen-stat-50World-5000World-01291553"
 
     stat_file = "result/%s.json" % common
     sim_route_file = 'result/%s-sim-route.json' % common
     sim_block_file_both = 'result/%s-sim-block.csv' % common
 
-    # generate_stat(stat_file, 5, 5000, ["CN"], None)
-    # route_sim(stat_file, sim_route_file)
-    # block_traffic_sim_both(sim_route_file, sim_block_file_both, list(range(1000,10500, 500)) , 50, incremental=True)
-    block_sim_both_plot(sim_block_file_both, fig_save=False, name_prefix=common + "-")
+    generate_stat(stat_file, 50, 5000, None, None)
+    route_sim(stat_file, sim_route_file)
+    block_traffic_sim_both(sim_route_file, sim_block_file_both, np.linspace(0.05, 1.0, 20) , 50, incremental=200)
+    block_sim_both_plot(sim_block_file_both, fig_save=True, name_prefix=common + "-")
     # print(len(get_non_stub_as_list()))
 
 if __name__ == "__main__":
