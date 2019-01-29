@@ -2,6 +2,8 @@ import json
 import random
 
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 
 from eval_ddos_utils import box_plot, filter_stub_as, get_non_stub_as_list
 
@@ -176,12 +178,48 @@ def block_traffic_sim_both(select_stat_file, sim_save_file, sel_num_list, random
 def block_sim_both_plot(sim_save_file, fig_save=False, name_prefix=""):
     df = pd.read_csv(sim_save_file)
     c = df.columns
-    box_plot(c[0], c[2], df, name_prefix + "fspec-block-rate", fig_save)
-    box_plot(c[0], c[3], df, name_prefix + "fspec-bandwidth-saving", fig_save)
-    box_plot(c[0], c[5], df, name_prefix + "friend-block-rate", fig_save)
-    box_plot(c[0], c[6], df, name_prefix + "friend-bandwidth-saving", fig_save)
+    # box_plot(c[0], c[2], df, name_prefix + "fspec-block-rate", fig_save)
+    # box_plot(c[0], c[3], df, name_prefix + "fspec-bandwidth-saving", fig_save)
+    # box_plot(c[0], c[5], df, name_prefix + "friend-block-rate", fig_save)
+    # box_plot(c[0], c[6], df, name_prefix + "friend-bandwidth-saving", fig_save)
+
     # df = df[df[c[2]] != 0]
     # df['rate'] = df.apply(lambda x: x[c[5]]/x[c[2]], axis=1)
     # sim_plot(c[0], 'rate', df, "result-rate-block-rate")
+
+    x = c[0]
+    y = c[2]
+
+    plt.clf()
+
+    width=0.3
+    half_width = width/2
+
+    data = dict(list(df.groupby(x)))
+    xi = list(data.keys())
+    xi.sort()
+    yy = [list(data[i][y]) for i in xi]
+
+    center_positions = np.linspace(1, len(xi), len(xi))
+
+    p1 = plt.boxplot(yy, positions= center_positions-half_width, widths = width,
+                     sym="",patch_artist=True, boxprops=dict(facecolor="lightblue"))
+
+    y = c[5]
+    yy = [list(data[i][y]) for i in xi]
+    p2 = plt.boxplot(yy, positions=center_positions + half_width, widths=width,
+                     sym="",patch_artist=True, boxprops=dict(facecolor="lightgreen"))
+
+
+    xtick = np.array(xi) / 200
+    plt.xticks(center_positions, xtick)
+    plt.ylabel("Traffic block rate")
+    plt.xlabel("AS number (%)")
+    plt.legend([p1['boxes'][0], p2['boxes'][0]], ['FlowSpec', 'FRIEND'], loc='upper left')
+
+    # plt.grid(axis='x')
+    plt.ylim([0,1])
+    plt.show()
+
     print("plot done!")
 

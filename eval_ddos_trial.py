@@ -61,7 +61,65 @@ def get_tier1_as():
 
 
 def main():
-    pass
+    import random
+    c_as = 6075
+    # a="./lb_eval.py 1 data/20181201.as-rel.txt /home/pcl/8LStudentYuHaitao/tmp/jenson/flow-stats.70min.0.csv %d > result/1-1-23.txt &"%c_as
+    # print(a)
+    b = "./lb_eval.py 4 data/20181201.as-rel.txt /home/pcl/8LStudentYuHaitao/tmp/jenson/flow-stats.70min.0.csv %d %s > result/%d-4-%d.txt"
+
+    TIER1 = [7018, 209, 3356, 3549, 4323, 3320, 3257, 4436, 286, 6830, 2914, 5511, 3491, 1239, 6453, 6762, 12956, 1299,
+             701, 702, 703, 2828, 6461]
+
+    MAXITEM = 50
+    ruleslist = []
+    inc_sel_list = []
+
+    for n in range(1, 24):
+        if len(inc_sel_list)==0:
+            if len(TIER1)>MAXITEM:
+                sel = random.sample(TIER1, MAXITEM)
+            else:
+                sel = TIER1
+            all_set = set(TIER1)
+            for item in sel:
+                one_set = {item}
+                inc_sel_list.append((one_set, all_set-one_set))
+        else:
+            old_len = len(inc_sel_list)
+            while len(inc_sel_list)<MAXITEM:
+                p,q = inc_sel_list[random.randint(0,old_len-1)]
+                inc_sel_list.append((set(p), set(q)))
+            for p,q in inc_sel_list:
+                item = random.sample(q,1)[0]
+                p.add(item)
+                q.remove(item)
+            new_inc_sel_list = []
+            for p,q in inc_sel_list:
+                in_new = False
+                for p1,q1 in new_inc_sel_list:
+                    if p==p1:
+
+                        in_new=True
+                        break
+                if not in_new:
+                    new_inc_sel_list.append((p,q))
+            inc_sel_list = new_inc_sel_list
+
+        testnum = 1
+        for p,q in inc_sel_list:
+            s = ",".join(str(i) for i in p)
+            cmd = b%(c_as, s, n, testnum)
+            target = "result/%d-4-%d.txt"% (n, testnum)
+            ruleslist.append((target, cmd))
+            testnum += 1
+    # print(ruleslist)
+
+    print("all:%s"%(" ".join(a[0] for a in ruleslist)))
+
+    for target, cmd in ruleslist:
+        print("%s:"%target)
+        print("\t%s"%cmd)
+
 
 
 if __name__ == "__main__":
