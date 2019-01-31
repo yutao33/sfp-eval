@@ -126,6 +126,26 @@ def get_rate_flowspec(stat: dict, sel_set, metric_func=None):
 #     box_plot(c0, c3, df, name_prefix + "fspec-bandwidth-saving", fig_save)
 
 
+def block_traffic_sim_friend_tier1(sim_route_file, sim_block_file):
+    stat = json.load(open(sim_route_file))
+    data = []
+    func = lambda x: x
+
+    TIER1 = {7018, 209, 3356, 3549, 4323, 3320, 3257, 4436, 286, 6830, 2914, 5511, 3491, 1239, 6453, 6762, 12956, 1299,
+             701, 702, 703, 2828, 6461}
+    for c_as, dns_server in stat.items():
+        r = bandwidth_consume_friend(stat, TIER1, func)
+        data.append((int(c_as), *r))
+
+    df = pd.DataFrame(data, columns=['c_as', 'total_n', 'total_m', 'total_bw', 'b_n', 'b_m', 'b_bw'])
+    df.to_csv(sim_block_file, index=False)
+    print("block_traffic_sim_friend_tier1 done!")
+
+
+def block_sim_friend_tier1_plot(sim_block_file_both, fig_save=False, figname="result/%s-cdf.pdf"):
+    pass
+
+
 def block_traffic_sim_both(select_stat_file, sim_save_file, sel_percent_list, random_loop=10, incremental=False):
     stat = json.load(open(select_stat_file))
     # stat, upstream = filter_stub_as(stat)
@@ -175,7 +195,7 @@ def block_traffic_sim_both(select_stat_file, sim_save_file, sel_percent_list, ra
     df = pd.DataFrame(data, columns=c)
     df.to_csv(sim_save_file, index=False)
     print(sim_save_file)
-    print("to_csv")
+    print("block_traffic_sim_both done!")
 
 
 def block_sim_both_plot(sim_save_file, fig_save=False, name_prefix=""):
