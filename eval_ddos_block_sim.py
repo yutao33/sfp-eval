@@ -3,6 +3,7 @@ import random
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import multiprocessing
 
 from eval_ddos_utils import box_plot, filter_stub_as, get_non_stub_as_list
 
@@ -41,7 +42,9 @@ def bandwidth_consume_friend(stat: dict, sel_set, metric_func=None):
                 b_bw += metric*(len(t['route']) - i)
                 b_m += metric
                 b_n += 1
-    return total_n, total_m, total_bw, b_n, b_m, b_bw
+    r = total_n, total_m, total_bw, b_n, b_m, b_bw
+    print("bandwidth_consume_friend", r)
+    return r
 
 
 def get_rate_friend(stat: dict, sel_set, metric_func=None):
@@ -126,24 +129,58 @@ def get_rate_flowspec(stat: dict, sel_set, metric_func=None):
 #     box_plot(c0, c3, df, name_prefix + "fspec-bandwidth-saving", fig_save)
 
 
-def block_traffic_sim_friend_tier1(sim_route_file, sim_block_file):
+def block_traffic_sim_friend_tier1(sim_route_file, sim_block_file, mp=False):
     stat = json.load(open(sim_route_file))
     data = []
     func = lambda x: x
 
     TIER1 = {7018, 209, 3356, 3549, 4323, 3320, 3257, 4436, 286, 6830, 2914, 5511, 3491, 1239, 6453, 6762, 12956, 1299,
              701, 702, 703, 2828, 6461}
-    for c_as, dns_server in stat.items():
-        r = bandwidth_consume_friend(stat, TIER1, func)
-        data.append((int(c_as), *r))
+
+    if not mp:
+        for c_as, dns_server in stat.items():
+            single_stat = {c_as: dns_server}
+            r = bandwidth_consume_friend(single_stat, TIER1, func)
+            data.append((int(c_as), *r))
+    else:
+        pool = multiprocessing.Pool(processes=96)
+        result = []
+        for c_as, dns_server in stat.items():
+            single_stat = {c_as: dns_server}
+            r = pool.apply_async(bandwidth_consume_friend, (single_stat, TIER1, func))
+            result.append((c_as, r))
+        for c_as,r in result:
+            r1 = r.get()
+            data.append((int(c_as), *r1))
 
     df = pd.DataFrame(data, columns=['c_as', 'total_n', 'total_m', 'total_bw', 'b_n', 'b_m', 'b_bw'])
     df.to_csv(sim_block_file, index=False)
     print("block_traffic_sim_friend_tier1 done!")
 
 
-def block_sim_friend_tier1_plot(sim_block_file_both, fig_save=False, figname="result/%s-cdf.pdf"):
-    pass
+def block_sim_friend_tier1_plot(sim_block_file_both, fig_save=False, figpath_prefix="block_sim_friend_tier1_plot"):
+    df = pd.read_csv(sim_block_file_both, dtype=float)
+    c = df.columns
+
+    a = df[c[4]] / df[c[1]]
+    a.hist(cumulative = True,density=True, histtype='step',bins=1000 )
+    plt.xlabel('Traffic Block Rate')
+    plt.ylabel('CDF')
+    plt.xlim([0,1])
+    if plt.savefig:
+        plt.savefig(figpath_prefix+"-blockrate-cdf.pdf", dpi=300, bbox_inches='tight')
+    else:
+        plt.show()
+
+    a = df[c[6]] / df[c[3]]
+    a.hist(cumulative=True, density=True, histtype='step', bins=1000)
+    plt.xlabel('Bandwidth Saving Rate')
+    plt.ylabel('CDF')
+    plt.xlim([0, 1])
+    if fig_save:
+        plt.savefig(figpath_prefix + "-bandwidthsavingrate-cdf.pdf", dpi=300, bbox_inches='tight')
+    else:
+        plt.show()
 
 
 def block_traffic_sim_both(select_stat_file, sim_save_file, sel_percent_list, random_loop=10, incremental=False):

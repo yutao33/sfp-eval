@@ -113,7 +113,7 @@ def route_sim_multiprocess(stat_file, tmp_file):
     stat = {int(k): v for k, v in stat.items()}
     dg = load_as_graph()
     stat1 = {}
-    pool = multiprocessing.Pool(processes=24)
+    pool = multiprocessing.Pool(processes=96)
     result_list = []
     for c_as,c_stat in stat.items():
         s_as_set = set(a["as"] for a in c_stat.values())

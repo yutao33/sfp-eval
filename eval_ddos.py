@@ -89,16 +89,16 @@ def main1():
     block_sim_both_plot(sim_block_file_both, fig_save=False, name_prefix=common + "-")
 
 def main():
-    common = "result/gen2-stat-500AS-5000DNS-01301900"
+    common = "result1/gen2-stat-500AS-5000DNS-01301900"
 
     stat_file = "%s.json" % common
     sim_route_file = '%s-sim-route.json' % common
     sim_block_file = '%s-sim-block.csv' % common
 
-    generate_stat(stat_file, 500, 10000, None, None)
+    generate_stat(stat_file, 500, 5000, None, None)
     route_sim(stat_file, sim_route_file)
-    block_traffic_sim_friend_tier1(sim_route_file, sim_block_file)
-    block_sim_friend_tier1_plot(sim_block_file, fig_save=False, figname="result/%s-cdf.pdf")
+    block_traffic_sim_friend_tier1(sim_route_file, sim_block_file, mp=True)
+    block_sim_friend_tier1_plot(sim_block_file, fig_save=False, figpath_prefix=common)
 
 
 
