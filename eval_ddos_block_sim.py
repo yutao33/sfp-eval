@@ -140,15 +140,17 @@ def block_traffic_sim_friend_tier1(sim_route_file, sim_block_file, mp=False):
     if not mp:
         for c_as, dns_server in stat.items():
             single_stat = {c_as: dns_server}
-            r = bandwidth_consume_friend(single_stat, TIER1, func)
+            r = bandwidth_consume_friend(single_stat, TIER1, None)
             data.append((int(c_as), *r))
     else:
         pool = multiprocessing.Pool(processes=96)
         result = []
         for c_as, dns_server in stat.items():
             single_stat = {c_as: dns_server}
-            r = pool.apply_async(bandwidth_consume_friend, (single_stat, TIER1, func))
+            r = pool.apply_async(bandwidth_consume_friend, (single_stat, TIER1, None))
             result.append((c_as, r))
+        pool.close()
+        pool.join()
         for c_as,r in result:
             r1 = r.get()
             data.append((int(c_as), *r1))
@@ -162,25 +164,28 @@ def block_sim_friend_tier1_plot(sim_block_file_both, fig_save=False, figpath_pre
     df = pd.read_csv(sim_block_file_both, dtype=float)
     c = df.columns
 
-    a = df[c[4]] / df[c[1]]
-    a.hist(cumulative = True,density=True, histtype='step',bins=1000 )
+    a = df[c[5]] / df[c[2]]
+#     print(len(a[a>0.90]))
+    a.hist(cumulative = True,density=True, histtype='step',bins=1000,range=(0,1.1))
     plt.xlabel('Traffic Block Rate')
     plt.ylabel('CDF')
-    plt.xlim([0,1])
+    plt.xlim([0,1.01])
     if plt.savefig:
         plt.savefig(figpath_prefix+"-blockrate-cdf.pdf", dpi=300, bbox_inches='tight')
     else:
         plt.show()
 
+    plt.clf()
     a = df[c[6]] / df[c[3]]
-    a.hist(cumulative=True, density=True, histtype='step', bins=1000)
+    a.hist(cumulative=True, density=True, histtype='step', bins=1000, range=(0,1))
     plt.xlabel('Bandwidth Saving Rate')
     plt.ylabel('CDF')
-    plt.xlim([0, 1])
+    plt.xlim([0, 0.8])
     if fig_save:
         plt.savefig(figpath_prefix + "-bandwidthsavingrate-cdf.pdf", dpi=300, bbox_inches='tight')
     else:
         plt.show()
+    print("block_sim_friend_tier1_plot")
 
 
 def block_traffic_sim_both(select_stat_file, sim_save_file, sel_percent_list, random_loop=10, incremental=False):
@@ -246,17 +251,17 @@ def block_sim_both_plot(sim_save_file, fig_save=False, name_prefix=""):
     # df = df[df[c[2]] != 0]
     # df['rate'] = df.apply(lambda x: x[c[5]]/x[c[2]], axis=1)
     # sim_plot(c[0], 'rate', df, "result-rate-block-rate")
-    plot_subfunc(df, c[2], c[5], "Traffic Block Rate", fig_save, name_prefix+"blockrate", ylim=[0,1])
-    plot_subfunc(df, c[3], c[6], "Bandwidth Saving Rate", fig_save, name_prefix+"bandwidthsaving", ylim=[0,0.8])
+    plot_subfunc(df, c[2], c[5], "Successful Blocking Rate", fig_save, name_prefix+"blockrate", ylim=[0,1])
+    plot_subfunc(df, c[3], c[6], "Global Bandwidth Saving Rate", fig_save, name_prefix+"bandwidthsaving", ylim=[0,0.8])
 
 
-def plot_subfunc(df, y1, y2, ylabel, save, name, ylim=None):
+def plot_subfunc(df, y1, y2, ylabel, save, name, ylim=None, boxprops=None):
     c = df.columns
     x = c[0]
     y = y1
     
     width=7
-    fig=plt.figure(figsize=(width,width/2))
+    fig=plt.figure(figsize=(width,width/2-0.8))
 
     plt.clf()
 
@@ -270,13 +275,17 @@ def plot_subfunc(df, y1, y2, ylabel, save, name, ylim=None):
 
     center_positions = np.linspace(1, len(xi), len(xi))
 
-    p1 = plt.boxplot(yy, positions= center_positions-half_width, widths = width,
-                     sym="",patch_artist=True, boxprops=dict(facecolor="lightblue"))
+    p1 = plt.boxplot(yy, positions=center_positions+half_width, widths = width,
+                     sym="",#patch_artist=True, 
+                     boxprops=dict(linestyle="--", color="red"),
+                     whiskerprops=dict(linestyle="--", color="red"))
 
     y = y2
     yy = [list(data[i][y]) for i in xi]
-    p2 = plt.boxplot(yy, positions=center_positions + half_width, widths=width,
-                     sym="",patch_artist=True, boxprops=dict(facecolor="lightgreen"))
+    p2 = plt.boxplot(yy, positions=center_positions - half_width, widths=width,
+                     sym="",#patch_artist=True, 
+                     boxprops=dict(linestyle="-", color="blue"),
+                     whiskerprops=dict(linestyle="-", color="blue"))
 
 
     xtick = np.array(xi) / 17347.0 * 100
@@ -284,17 +293,20 @@ def plot_subfunc(df, y1, y2, ylabel, save, name, ylim=None):
     xtick = ['{:g}'.format(i) for i in xtick]
     
     plt.xticks(center_positions, xtick)
-    plt.ylabel(ylabel)
-    plt.xlabel("AS number (%)")
-    plt.legend([p1['boxes'][0], p2['boxes'][0]], ['FlowSpec', 'FRIEND'], loc='upper left')
+    plt.ylabel(ylabel, fontsize=12)
+    plt.xlabel("Percentage of deployed non-stub ASes", fontsize=12)
+    plt.legend([p2['boxes'][0], p1['boxes'][0]], ['FRIEND', 'FlowSpec'], loc='upper left')
 
-    # plt.grid(axis='x')
+    plt.grid(axis='y',linestyle='-', linewidth=0.1)
     if ylim:
         plt.ylim(ylim)
+    plt.xlim([0.60,19.4])
     if save:
-        fig.savefig("result1/" + name + ".pdf", dpi=300, bbox_inches='tight')
+        fig.savefig("result/" + name + ".pdf", dpi=300, bbox_inches='tight')
     else:
         plt.show()
+    
+    
 
     print("plot done!")
 
