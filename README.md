@@ -1,6 +1,27 @@
 
 this is partially forked from SFP repository
 
+# result plot
+
+DDoS : eval_ddos.py
+
+loadbalance: jupyter/pynb-loadbalance-plot.ipynb
+
+stability: jupyter/pynb-stability-plot.ipynb
+
+
+> put all data in `data/` dir
+
+
+
+
+
+
+
+
+
+
+
 # Analysis of Internet Topology
 
 All the analysis are based on the public Internet dataset.

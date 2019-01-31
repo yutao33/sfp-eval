@@ -60,7 +60,7 @@ def get_tier1_as():
     return ret
 
 
-def main():
+def main1():
     import random
     c_as = 6075
     # a="./lb_eval.py 1 data/20181201.as-rel.txt /home/pcl/8LStudentYuHaitao/tmp/jenson/flow-stats.70min.0.csv %d > result/1-1-23.txt &"%c_as
@@ -73,6 +73,8 @@ def main():
     MAXITEM = 50
     ruleslist = []
     inc_sel_list = []
+
+    output = []
 
     for n in range(1, 24):
         if len(inc_sel_list)==0:
@@ -111,7 +113,41 @@ def main():
             cmd = b%(c_as, s, n, testnum)
             target = "result/%d-4-%d.txt"% (n, testnum)
             ruleslist.append((target, cmd))
+
+            output.append("%d-%d"%(n,testnum))
+            output.append(s)
             testnum += 1
+    # print(ruleslist)
+
+    # print("all:%s"%(" ".join(a[0] for a in ruleslist)))
+    #
+    # for target, cmd in ruleslist:
+    #     print("%s:"%target)
+    #     print("\t%s"%cmd)
+
+    with open("s_as_config.txt","w") as f:
+        for l in output:
+            f.write(l)
+            f.write("\n")
+
+
+
+def main2():
+    c_as = 6075
+    # a="./lb_eval.py 1 data/20181201.as-rel.txt /home/pcl/8LStudentYuHaitao/tmp/jenson/flow-stats.70min.0.csv %d > result/1-1-23.txt &"%c_as
+    # print(a)
+    b = "./lb_eval.py 4 data/20181201.as-rel.txt /home/pcl/8LStudentYuHaitao/tmp/jenson/flow-stats.70min.0.csv %d > result/%d.txt"
+
+    ruleslist = []
+
+    df = pd.read_csv('data/multihoming_stubs_flow_stats.csv',dtype=str, header=None, names=["as","c1","c2"])
+
+    for n in range(501, 1001):
+        asn = df["as"][n-1]
+        asn = int(asn)
+        cmd = b%(asn,asn)
+        target = "result/%d.txt"%asn
+        ruleslist.append((target, cmd))
     # print(ruleslist)
 
     print("all:%s"%(" ".join(a[0] for a in ruleslist)))
@@ -119,6 +155,44 @@ def main():
     for target, cmd in ruleslist:
         print("%s:"%target)
         print("\t%s"%cmd)
+
+
+def main3():
+    ruleslist = []
+    df = pd.read_csv('data/multihoming_stubs_flow_stats.csv',dtype=str, header=None, names=["as","c1","c2"])
+    for n in range(1, 1001):
+        asn = df["as"][n-1]
+        asn = int(asn)
+        target = "result-stability/%d.txt" % asn
+        cmd = "python3 stability_analysis.py data/20181201.as-rel.txt %d 20 > %s"%(asn,target)
+        ruleslist.append((target, cmd))
+
+    print("all:%s"%(" ".join(a[0] for a in ruleslist)))
+
+    for target, cmd in ruleslist:
+        print("%s:"%target)
+        print("\t%s"%cmd)
+
+
+def main():
+    ruleslist = []
+    df = pd.read_csv('data/multihoming_stubs_flow_stats.csv',dtype=str, header=None, names=["as","c1","c2"])
+    for n in range(1, 51):
+        asn = df["as"][n-1]
+        asn = int(asn)
+        if asn==21899:
+            continue
+        target = "result-lb-eval/%d.txt" % asn
+        cmd = "python3 lb_eval_fork.py 4 data/20181201.as-rel.txt /home/pcl/8LStudentYuHaitao/tmp/jenson/flow-stats.70min.0.csv %d"%(asn)
+        ruleslist.append((target, cmd))
+
+    print("all:%s"%(" ".join(a[0] for a in ruleslist)))
+
+    for target, cmd in ruleslist:
+        print("%s:"%target)
+        print("\t%s"%cmd)
+
+
 
 
 

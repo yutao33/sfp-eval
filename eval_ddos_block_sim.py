@@ -182,19 +182,22 @@ def block_traffic_sim_both(select_stat_file, sim_save_file, sel_percent_list, ra
 def block_sim_both_plot(sim_save_file, fig_save=False, name_prefix=""):
     df = pd.read_csv(sim_save_file)
     c = df.columns
-    box_plot(c[0], c[2], df, name_prefix + "fspec-block-rate", fig_save)
-    box_plot(c[0], c[3], df, name_prefix + "fspec-bandwidth-saving", fig_save)
-    box_plot(c[0], c[5], df, name_prefix + "friend-block-rate", fig_save)
-    box_plot(c[0], c[6], df, name_prefix + "friend-bandwidth-saving", fig_save)
+    # box_plot(c[0], c[2], df, name_prefix + "fspec-block-rate", fig_save)
+    # box_plot(c[0], c[3], df, name_prefix + "fspec-bandwidth-saving", fig_save)
+    # box_plot(c[0], c[5], df, name_prefix + "friend-block-rate", fig_save)
+    # box_plot(c[0], c[6], df, name_prefix + "friend-bandwidth-saving", fig_save)
 
     # df = df[df[c[2]] != 0]
     # df['rate'] = df.apply(lambda x: x[c[5]]/x[c[2]], axis=1)
     # sim_plot(c[0], 'rate', df, "result-rate-block-rate")
+    plot_subfunc(df, c[2], c[5], "Traffic Block Rate", fig_save, name_prefix+"blockrate")
+    plot_subfunc(df, c[3], c[6], "Bandwidth Saving Rate", fig_save, name_prefix+"bandwidthsaving")
 
-    return
 
+def plot_subfunc(df, y1, y2, ylabel, save, name):
+    c = df.columns
     x = c[0]
-    y = c[2]
+    y = y1
 
     plt.clf()
 
@@ -211,7 +214,7 @@ def block_sim_both_plot(sim_save_file, fig_save=False, name_prefix=""):
     p1 = plt.boxplot(yy, positions= center_positions-half_width, widths = width,
                      sym="",patch_artist=True, boxprops=dict(facecolor="lightblue"))
 
-    y = c[5]
+    y = y2
     yy = [list(data[i][y]) for i in xi]
     p2 = plt.boxplot(yy, positions=center_positions + half_width, widths=width,
                      sym="",patch_artist=True, boxprops=dict(facecolor="lightgreen"))
@@ -219,13 +222,16 @@ def block_sim_both_plot(sim_save_file, fig_save=False, name_prefix=""):
 
     xtick = np.array(xi) / 200
     plt.xticks(center_positions, xtick)
-    plt.ylabel("Traffic block rate")
+    plt.ylabel(ylabel)
     plt.xlabel("AS number (%)")
     plt.legend([p1['boxes'][0], p2['boxes'][0]], ['FlowSpec', 'FRIEND'], loc='upper left')
 
     # plt.grid(axis='x')
     plt.ylim([0,1])
-    plt.show()
+    if save:
+        plt.savefig("result/" + name + ".pdf", dpi=300, bbox_inches='tight')
+    else:
+        plt.show()
 
     print("plot done!")
 
