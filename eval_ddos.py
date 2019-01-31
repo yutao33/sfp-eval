@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 from eval_ddos_block_sim import block_traffic_sim_both, block_sim_both_plot
-from eval_ddos_route_sim import route_sim
+from eval_ddos_route_sim import route_sim_multiprocess as route_sim
 from eval_ddos_utils import load_as_graph, get_stub_as_list, get_as_country, asn_lookup, get_vaild_dns_lists, \
     get_non_stub_as_list
 
@@ -75,16 +75,18 @@ def generate_stat(stat_file, target_num = 10, dns_server_num = 3000, target_coun
 
 
 def main():
-    common = "gen-stat-20World-5000World-1"
+    common = "gen-stat-20World-10000World-01301200"
 
-    stat_file = "result/%s.json" % common
-    sim_route_file = 'result/%s-sim-route.json' % common
-    sim_block_file_both = 'result/%s-sim-block.csv' % common
+    stat_file = "result1/%s.json" % common
+    sim_route_file = 'result1/%s-sim-route.json' % common
+    sim_block_file_both = 'result1/%s-sim-block.csv' % common
 
-    # generate_stat(stat_file, 50, 5000, None, None)
+    # generate_stat(stat_file, 20, 10000, None, None)
     # route_sim(stat_file, sim_route_file)
-    # block_traffic_sim_both(sim_route_file, sim_block_file_both, np.linspace(0.05, 1.0, 20) , 50, incremental=200)
+    # block_traffic_sim_both(sim_route_file, sim_block_file_both, np.linspace(0.05, 0.5, 19) , 50, incremental=200)
+    # print(len(get_non_stub_as_list()))
     block_sim_both_plot(sim_block_file_both, fig_save=True, name_prefix=common + "-")
+    
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,5 @@
 import json
 import random
-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -190,18 +189,21 @@ def block_sim_both_plot(sim_save_file, fig_save=False, name_prefix=""):
     # df = df[df[c[2]] != 0]
     # df['rate'] = df.apply(lambda x: x[c[5]]/x[c[2]], axis=1)
     # sim_plot(c[0], 'rate', df, "result-rate-block-rate")
-    plot_subfunc(df, c[2], c[5], "Traffic Block Rate", fig_save, name_prefix+"blockrate")
-    plot_subfunc(df, c[3], c[6], "Bandwidth Saving Rate", fig_save, name_prefix+"bandwidthsaving")
+    plot_subfunc(df, c[2], c[5], "Traffic Block Rate", fig_save, name_prefix+"blockrate", ylim=[0,1])
+    plot_subfunc(df, c[3], c[6], "Bandwidth Saving Rate", fig_save, name_prefix+"bandwidthsaving", ylim=[0,0.8])
 
 
-def plot_subfunc(df, y1, y2, ylabel, save, name):
+def plot_subfunc(df, y1, y2, ylabel, save, name, ylim=None):
     c = df.columns
     x = c[0]
     y = y1
+    
+    width=7
+    fig=plt.figure(figsize=(width,width/2))
 
     plt.clf()
 
-    width=0.3
+    width=0.35
     half_width = width/2
 
     data = dict(list(df.groupby(x)))
@@ -220,16 +222,20 @@ def plot_subfunc(df, y1, y2, ylabel, save, name):
                      sym="",patch_artist=True, boxprops=dict(facecolor="lightgreen"))
 
 
-    xtick = np.array(xi) / 200
+    xtick = np.array(xi) / 17347.0 * 100
+    xtick = np.around(xtick,1)
+    xtick = ['{:g}'.format(i) for i in xtick]
+    
     plt.xticks(center_positions, xtick)
     plt.ylabel(ylabel)
     plt.xlabel("AS number (%)")
     plt.legend([p1['boxes'][0], p2['boxes'][0]], ['FlowSpec', 'FRIEND'], loc='upper left')
 
     # plt.grid(axis='x')
-    plt.ylim([0,1])
+    if ylim:
+        plt.ylim(ylim)
     if save:
-        plt.savefig("result/" + name + ".pdf", dpi=300, bbox_inches='tight')
+        fig.savefig("result1/" + name + ".pdf", dpi=300, bbox_inches='tight')
     else:
         plt.show()
 
